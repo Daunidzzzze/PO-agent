@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="topbar">
+  <div class="brand">ИИ Product Owner</div>
+  <div class="crumbs">
+    <b>{{ team.name }}</b> · {{ project.title or "проект без названия" }}
+    <span class="chip stage">{{ project.current_stage }}</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="bell" id="bell">
+    <button class="icon" onclick="toggleBell()">🔔<span id="bell-count" class="badge hidden">0</span></button>
+    <div id="bell-list" class="dropdown hidden"
+         hx-get="/partials/notifications" hx-trigger="load, every 60s"></div>
+  </div>
+  <span class="me">{{ user.full_name }}</span>
+  <form method="post" action="/logout"><button class="link">выйти</button></form>
+</header>
+
+<div class="mobile-switch">
+  <button data-pane="chat" class="on">Чат</button>
+  <button data-pane="state">Проект</button>
+</div>
+
+<main class="cols">
+  <!-- ЛЕВАЯ КОЛОНКА: командный чат -->
+  <section class="pane chat" id="pane-chat">
+    <!-- every 30s — подстраховка: планировщик живёт в другом процессе, его
+         сообщения в SSE-шину этого процесса не попадают -->
+    <div id="messages" class="messages"
+         hx-get="/partials/messages"
+         hx-trigger="load, refresh-messages from:body, every 30s"></div>
+    <div id="streaming" class="msg agent streaming hidden">
+      <div class="who">Product Owner</div><div class="body" id="stream-body"></div>
+    </div>
+    <form class="composer" id="composer">
+      <textarea name="text" id="text" rows="2" required
+                placeholder="Сообщение команде и агенту… (Enter — отправить)"></textarea>
+      <button type="submit">Отправить</button>
+    </form>
+  </section>
+
+  <!-- ПРАВАЯ КОЛОНКА: состояние проекта -->
+  <section class="pane state" id="pane-state">
+    <nav class="tabs">
+      <button class="on" data-tab="backlog">Бэклог</button>
+      <button data-tab="requirements">Требования</button>
+      <button data-tab="sprint">Спринт</button>
+      <button data-tab="risks">Риски</button>
+      <button data-tab="proposals">Предложения <span id="pending-dot" class="dot hidden"></span></button>
+      <button data-tab="standup">Стендап</button>
+      <button data-tab="feed">Лента</button>
+    </nav>
+    <div class="tabbody" id="tabbody"
+         hx-get="/partials/backlog" hx-trigger="load, refresh-state from:body"></div>
+  </section>
+</main>
+
+<dialog id="modal"><div id="modal-body"></div>
+  <form method="dialog"><button class="btn ghost">Закрыть</button></form></dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentTab = "backlog";
+const tabUrl = t => t === "backlog" ? "/partials/backlog" : "/partials/" + t;
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  currentTab = b.dataset.tab;
+  htmx.ajax("GET", tabUrl(currentTab), "#tabbody");
+});
+
+document.querySelectorAll(".mobile-switch button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".mobile-switch button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  document.body.dataset.pane = b.dataset.pane;
+});
+
+const composer = document.getElementById("composer");
+const textarea = document.getElementById("text");
+composer.onsubmit = async e => {
+  e.preventDefault();
+  const text = textarea.value.trim();
+  if (!text) return;
+  textarea.value = "";
+  const body = new FormData(); body.append("text", text);
+  const r = await fetch("/chat/send", {method: "POST", body});
+  if (r.status === 429) alert("Дневной лимит сообщений команды исчерпан.");
+};
+textarea.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); composer.requestSubmit(); }
+});
+
+// --- SSE: живое обновление ленты и потоковый ответ агента
+const stream = document.getElementById("streaming");
+const streamBody = document.getElementById("stream-body");
+const es = new EventSource("/events");
+
+es.addEventListener("token", e => {
+  stream.classList.remove("hidden");
+  streamBody.textContent += JSON.parse(e.data).t;
+  streamBody.scrollIntoView({block: "end"});
+});
+es.addEventListener("message", () => {
+  stream.classList.add("hidden"); streamBody.textContent = "";
+  document.body.dispatchEvent(new Event("refresh-messages"));
+});
+es.addEventListener("proposals", () => {
+  document.getElementById("pending-dot").classList.remove("hidden");
+  refreshState();
+});
+es.addEventListener("state", refreshState);
+es.addEventListener("standup", () => { refreshState(); pingBell(); });
+
+function refreshState() { htmx.ajax("GET", tabUrl(currentTab), "#tabbody"); }
+function pingBell() { htmx.ajax("GET", "/partials/notifications", "#bell-list"); }
+
+function toggleBell() {
+  const l = document.getElementById("bell-list");
+  l.classList.toggle("hidden");
+  if (!l.classList.contains("hidden")) {
+    fetch("/notifications/read", {method: "POST"})
+      .then(() => document.getElementById("bell-count").classList.add("hidden"));
+  }
+}
+
+document.body.addEventListener("htmx:beforeSwap", e => {
+  // запоминаем, читал ли человек ленту снизу — иначе опрос будет дёргать скролл
+  if (e.target.id === "messages") {
+    const el = e.target;
+    el.dataset.atBottom = (el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+  }
+});
+
+document.body.addEventListener("htmx:afterSwap", e => {
+  if (e.target.id === "messages" && e.target.dataset.atBottom !== "false") {
+    e.target.scrollTop = e.target.scrollHeight;
+  }
+  if (e.target.id === "bell-list") {
+    const n = e.target.querySelectorAll(".notif").length;
+    const c = document.getElementById("bell-count");
+    c.textContent = n; c.classList.toggle("hidden", n === 0);
+  }
+  wireDragDrop();
+});
+
+// --- drag-and-drop порядка внутри уровня приоритета
+function wireDragDrop() {
+  document.querySelectorAll("[data-dnd]").forEach(list => {
+    let dragged = null;
+    list.querySelectorAll("[draggable=true]").forEach(row => {
+      row.ondragstart = () => { dragged = row; row.classList.add("dragging"); };
+      row.ondragend = () => {
+        row.classList.remove("dragging");
+        const ids = [...list.querySelectorAll("[draggable=true]")].map(x => x.dataset.id);
+        fetch("/backlog/reorder", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ids})});
+      };
+      row.ondragover = e => {
+        e.preventDefault();
+        if (!dragged || dragged === row) return;
+        const after = row.getBoundingClientRect().top + row.offsetHeight / 2 < e.clientY;
+        list.insertBefore(dragged, after ? row.nextSibling : row);
+      };
+    });
+  });
+}
+
+function openItem(id) {
+  htmx.ajax("GET", "/partials/item/" + id, "#modal-body")
+      .then(() => document.getElementById("modal").showModal());
+}
+</script>
+{% endblock %}

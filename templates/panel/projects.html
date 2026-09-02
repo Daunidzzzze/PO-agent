@@ -1,0 +1,28 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Проекты</h1>
+<table class="grid">
+  <thead><tr><th>Команда</th><th>Проект</th><th>Этап</th><th>Бэклог</th>
+    <th>Открытых рисков</th><th>Последняя активность</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td>{{ r.team.name }}</td>
+    <td>{{ r.project.title }}</td>
+    <td>
+      <form method="post" action="/panel/projects/{{ r.project.id }}/stage" class="inline">
+        <select name="stage" onchange="this.form.submit()">
+          {% for s in ['concept','requirements','development','testing','delivery'] %}
+          <option value="{{ s }}" {{ 'selected' if r.project.current_stage == s }}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </td>
+    <td>{{ r.backlog }}</td>
+    <td class="{{ 'bad' if r.risks }}">{{ r.risks }}</td>
+    <td>{{ r.last|dt or '—' }}</td>
+  </tr>
+  {% else %}<tr><td colspan="6" class="muted">Проектов нет.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

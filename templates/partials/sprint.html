@@ -1,0 +1,24 @@
+{% if sprint %}
+<div class="card soft">
+  <h3>Спринт №{{ sprint.number }}</h3>
+  <p><b>Цель:</b> {{ sprint.goal }}</p>
+  <p class="muted">{{ sprint.starts_at|dt }} — {{ sprint.ends_at|dt }}
+    {% if days_left is not none %}
+      · {% if days_left < 0 %}просрочен{% else %}осталось дней: {{ days_left }}{% endif %}
+    {% endif %}
+  </p>
+  {% set done = items|selectattr('status','equalto','done')|list|length %}
+  <div class="progress"><div style="width: {{ (100 * done / items|length)|round if items else 0 }}%"></div></div>
+  <p class="muted">готово {{ done }} из {{ items|length }}</p>
+</div>
+<ul class="list">
+  {% for i in items %}
+  <li class="item st-{{ i.status }}" onclick="openItem({{ i.id }})">
+    <span class="id">#{{ i.id }}</span> {{ i.title }}
+    <span class="chip">{{ STATUS_RU.get(i.status) }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">Активного спринта нет. Попросите агента предложить план спринта.</p>
+{% endif %}

@@ -1,0 +1,33 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Обзор</h1>
+<table class="grid">
+  <thead><tr>
+    <th>Команда</th><th>Этап</th><th>Участников</th><th>Молчат</th>
+    <th>Сообщений</th><th>Доля топ-участника</th><th>Изменений бэклога</th>
+    <th>US</th><th>AC</th><th>Рисков</th><th>Предложений</th><th>Принято, %</th>
+    <th>Проактивных</th>
+  </tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td><b>{{ r.team.name }}</b> <span class="muted">{{ r.team.code }}</span></td>
+    <td>{{ r.stage }}</td>
+    <td>{{ r.members }}</td>
+    <td class="{{ 'bad' if r.silent_members }}">{{ r.silent_members }}</td>
+    <td>{{ r.messages }}</td>
+    <td class="{{ 'bad' if r.gini_top_share > 60 }}">{{ r.gini_top_share }}%</td>
+    <td>{{ r.backlog_changes }}</td>
+    <td>{{ r.user_stories }}</td>
+    <td>{{ r.acceptance_criteria }}</td>
+    <td>{{ r.risks_total }}</td>
+    <td>{{ r.proposals_total }}</td>
+    <td>{{ r.accept_rate }}%</td>
+    <td>{{ r.proactive }}</td>
+  </tr>
+  {% else %}<tr><td colspan="13" class="muted">Команд нет — импортируйте CSV.</td></tr>{% endfor %}
+  </tbody>
+</table>
+<p class="muted">«Доля топ-участника» — процент сообщений самого активного члена команды.
+Высокое значение означает, что за всех работает один человек.</p>
+{% endblock %}

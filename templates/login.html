@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block body_class %}centered{% endblock %}
+{% block content %}
+<form class="card auth" method="post" action="/login">
+  <h1>ИИ Product Owner</h1>
+  <p class="muted">Войдите по коду команды и личному коду участника.</p>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <label>Код команды
+    <input name="team_code" required autocomplete="off" autofocus>
+  </label>
+  <label>Личный код
+    <input name="user_code" required autocomplete="off">
+  </label>
+  <button type="submit">Войти</button>
+</form>
+{% endblock %}

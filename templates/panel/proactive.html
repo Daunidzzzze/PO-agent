@@ -1,0 +1,44 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Управление проактивностью</h1>
+
+<form method="post" action="/panel/proactive/global" class="card soft">
+  <h3>Глобальный выключатель</h3>
+  <p class="muted">Останавливает все фоновые обращения агента немедленно, во всех
+     командах. Стендапы по расписанию тоже перестают писать в чат.</p>
+  <label class="row">
+    <input type="checkbox" name="enabled" value="1" {{ 'checked' if global_enabled }}>
+    проактивность включена
+  </label>
+  <button type="submit">Применить</button>
+</form>
+
+<div class="card soft">
+  <h3>Лимиты (из .env, требуют перезапуска)</h3>
+  <ul class="kv">
+    <li><code>PROACTIVE_MAX_PER_DAY</code> = {{ cfg.PROACTIVE_MAX_PER_DAY }}
+      <span class="muted">— проактивных сообщений в сутки на команду, не считая стендапа</span></li>
+    <li><code>QUIET_HOURS_START/END</code> = {{ cfg.QUIET_HOURS_START }}:00–{{ cfg.QUIET_HOURS_END }}:00
+      <span class="muted">— в тихие часы сообщения копятся и уходят утром</span></li>
+    <li><code>RISK_SCAN_CRON</code> = {{ cfg.RISK_SCAN_CRON }}</li>
+    <li><code>STANDUP_COLLECTION_HOURS</code> = {{ cfg.STANDUP_COLLECTION_HOURS }}</li>
+    <li><code>PROPOSAL_EXPIRY_DAYS</code> = {{ cfg.PROPOSAL_EXPIRY_DAYS }}</li>
+    <li><code>DAILY_MESSAGE_LIMIT_PER_TEAM</code> = {{ cfg.DAILY_MESSAGE_LIMIT_PER_TEAM }}</li>
+  </ul>
+</div>
+
+<h3>По командам и расписание стендапов</h3>
+{% for t in teams %}
+<form method="post" action="/panel/proactive/team/{{ t.id }}" class="card soft row-form">
+  <b>{{ t.name }}</b>
+  <label><input type="checkbox" name="enabled" value="1"
+    {{ 'checked' if t.proactive_enabled }}> проактивность</label>
+  <label>дни <input name="standup_days" value="{{ t.standup_days }}"
+    placeholder="mon,tue,wed,thu,fri" size="24"></label>
+  <label>время <input name="standup_time" value="{{ t.standup_time }}" size="6"></label>
+  <button type="submit">Сохранить</button>
+</form>
+{% else %}
+<p class="muted">Команд нет.</p>
+{% endfor %}
+{% endblock %}

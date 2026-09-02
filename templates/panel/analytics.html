@@ -1,0 +1,107 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Аналитика</h1>
+
+<h2>Временная линия активности</h2>
+{% set W = 900 %}{% set H = 220 %}{% set PAD = 34 %}
+{% set n = timeline.labels|length %}
+{% set peak = ([timeline.team|max if timeline.team else 0,
+                timeline.agent|max if timeline.agent else 0]|max) or 1 %}
+{% macro points(series) %}
+  {%- for v in series -%}
+    {{ PAD + (loop.index0 * (W - 2 * PAD) / ((n - 1) if n > 1 else 1))|round(1) }},{{
+       (H - PAD - v * (H - 2 * PAD) / peak)|round(1) }}{{ " " }}
+  {%- endfor -%}
+{% endmacro %}
+{% if n %}
+<div class="chart">
+  <svg viewBox="0 0 {{ W }} {{ H }}" role="img"
+       aria-label="Сообщения команд и агента по дням">
+    <line x1="{{ PAD }}" y1="{{ H - PAD }}" x2="{{ W - PAD }}" y2="{{ H - PAD }}" class="axis"/>
+    <line x1="{{ PAD }}" y1="{{ PAD }}" x2="{{ PAD }}" y2="{{ H - PAD }}" class="axis"/>
+    <text x="4" y="{{ PAD + 4 }}" class="tick">{{ peak }}</text>
+    <text x="4" y="{{ H - PAD }}" class="tick">0</text>
+    <polyline class="line team" points="{{ points(timeline.team) }}"/>
+    <polyline class="line agent" points="{{ points(timeline.agent) }}"/>
+    <text x="{{ PAD }}" y="{{ H - 8 }}" class="tick">{{ timeline.labels[0] }}</text>
+    <text x="{{ W - PAD }}" y="{{ H - 8 }}" class="tick" text-anchor="end">{{ timeline.labels[-1] }}</text>
+  </svg>
+  <p class="legend"><span class="sw team"></span> команда
+     <span class="sw agent"></span> агент</p>
+</div>
+{% else %}<p class="muted">Сообщений ещё нет.</p>{% endif %}
+
+<h2>Распределения</h2>
+<div class="two-col">
+  <div>
+    <h3>По типам запросов</h3>
+    <table class="grid">
+      {% for k, v in dist.by_type.items() %}
+      <tr><td>{{ k or 'не размечено' }}</td><td>{{ v }}</td></tr>
+      {% else %}<tr><td class="muted">нет данных</td></tr>{% endfor %}
+    </table>
+  </div>
+  <div>
+    <h3>По этапам проекта</h3>
+    <table class="grid">
+      {% for k, v in dist.by_stage.items() %}
+      <tr><td>{{ k or '—' }}</td><td>{{ v }}</td></tr>
+      {% else %}<tr><td class="muted">нет данных</td></tr>{% endfor %}
+    </table>
+  </div>
+  <div>
+    <h3>По инициатору</h3>
+    <table class="grid">
+      {% for k, v in dist.by_initiator.items() %}
+      <tr><td>{{ {'user':'человек','agent_scheduled':'стендап',
+                  'agent_proactive':'агент сам'}.get(k, k) }}</td><td>{{ v }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+<h2>Команды</h2>
+<table class="grid">
+  <thead><tr><th>Команда</th><th>Сообщений</th><th>Изменений бэклога</th><th>US</th>
+    <th>AC</th><th>Рисков</th><th>Принято предложений</th><th>Доля топ-участника</th>
+    <th>Проактивных обращений</th></tr></thead>
+  <tbody>
+  {% for r in teams %}
+  <tr><td>{{ r.team.name }}</td><td>{{ r.messages }}</td><td>{{ r.backlog_changes }}</td>
+    <td>{{ r.user_stories }}</td><td>{{ r.acceptance_criteria }}</td>
+    <td>{{ r.risks_total }}</td><td>{{ r.accept_rate }}%</td>
+    <td>{{ r.gini_top_share }}%</td><td>{{ r.proactive }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Предложения</h2>
+<table class="grid">
+  <thead><tr><th>Тип</th><th>Всего</th><th>Доля принятия</th><th>Доля отклонения</th></tr></thead>
+  <tbody>
+  {% for k, d in proposals.by_type.items() %}
+  <tr><td>{{ PROPOSAL_TITLES.get(k, k) }}</td><td>{{ d.total }}</td>
+      <td>{{ d.accept_rate }}%</td><td>{{ d.reject_rate }}%</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">нет данных</td></tr>{% endfor %}
+  </tbody>
+</table>
+
+<h2>Качество разметки</h2>
+<p>Проверено вручную: <b>{{ agreement.validated }}</b>, совпало
+  <b>{{ agreement.matched }}</b> → точность
+  <b class="{{ 'bad' if agreement.validated and agreement.accuracy < 80 }}">{{ agreement.accuracy }}%</b>
+  <span class="muted">(критерий приёмки — не ниже 80% на выборке в 100 сообщений)</span></p>
+
+<h2>Расход токенов</h2>
+<p>Всего: <b>${{ costs.total_usd }}</b>, из них фоновые проверки без участия людей:
+   <b>${{ costs.background_usd }}</b></p>
+<table class="grid">
+  <thead><tr><th>Дата</th><th>Вид</th><th>Вход</th><th>Выход</th><th>$</th></tr></thead>
+  <tbody>
+  {% for r in costs.daily %}
+  <tr><td>{{ r.date }}</td><td>{{ r.kind }}</td><td>{{ r.tokens_in }}</td>
+      <td>{{ r.tokens_out }}</td><td>{{ r.usd }}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">нет данных</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,8 @@
+{% for n in items %}
+<a class="notif" href="{{ n.link or '#' }}">
+  <span class="chip">{{ n.type }}</span> {{ n.content }}
+  <span class="ts">{{ n.created_at|dt }}</span>
+</a>
+{% else %}
+<div class="notif muted">Новых уведомлений нет</div>
+{% endfor %}

@@ -1,0 +1,42 @@
+<h2>#{{ item.id }} {{ item.title }}</h2>
+<p class="muted">{{ item.type }} · {{ item.priority|upper }} · {{ STATUS_RU.get(item.status) }}
+  · создал {{ 'агент' if item.created_by == 'agent' else 'команда' }}
+  {% if item.estimate %} · оценка {{ item.estimate }}{% endif %}</p>
+
+{% if item.user_story_text %}<blockquote>{{ item.user_story_text }}</blockquote>{% endif %}
+{% if item.description %}<div class="body">{{ item.description|md }}</div>{% endif %}
+
+<h3>Критерии приёмки</h3>
+<ul class="ac">
+  {% for a in acs %}
+  <li>
+    <label>
+      <input type="checkbox" {{ 'checked' if a.is_met }}
+             hx-post="/ac/{{ a.id }}/toggle" hx-swap="none"
+             hx-on::after-request="refreshState()">
+      {{ a.content }}
+    </label>
+    <span class="chip">{{ 'агент' if a.created_by == 'agent' else 'команда' }}</span>
+  </li>
+  {% else %}<li class="muted">нет — попросите агента сформулировать</li>{% endfor %}
+</ul>
+<form class="inline-form" hx-post="/ac/create" hx-swap="none"
+      hx-on::after-request="this.reset(); openItem({{ item.id }})">
+  <input type="hidden" name="item_id" value="{{ item.id }}">
+  <input name="content" placeholder="Новый критерий приёмки" required>
+  <button>Добавить</button>
+</form>
+
+{% if children %}
+<h3>Подзадачи</h3>
+<ul>{% for c in children %}<li>#{{ c.id }} {{ c.title }} — {{ STATUS_RU.get(c.status) }}</li>{% endfor %}</ul>
+{% endif %}
+
+<h3>История изменений</h3>
+<ul class="history">
+  {% for e in history %}
+  <li><span class="ts">{{ e.created_at|dt }}</span>
+      {{ EVENT_TITLES.get(e.event_type, e.event_type) }}
+      <span class="chip {{ 'agent' if e.actor == 'agent' else '' }}">{{ e.actor }}</span></li>
+  {% else %}<li class="muted">нет записей</li>{% endfor %}
+</ul>

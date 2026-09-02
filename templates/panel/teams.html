@@ -1,0 +1,46 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Команды и участники</h1>
+{% if request.query_params.get('msg') %}
+<p class="ok-box">{{ request.query_params.get('msg') }}</p>{% endif %}
+
+<form class="card soft" method="post" action="/panel/teams/import" enctype="multipart/form-data">
+  <h3>Импорт CSV</h3>
+  <p class="muted">Колонки: <code>user_code, full_name, team_code, role_in_team</code>
+     (необязательно <code>team_name</code>). Существующие участники обновляются по
+     <code>user_code</code>, новые команды создаются вместе с проектом.</p>
+  <input type="file" name="file" accept=".csv" required>
+  <button type="submit">Загрузить</button>
+</form>
+
+{% for t in teams %}
+<div class="card soft">
+  <h3>{{ t.name }} <span class="chip">код входа: {{ t.code }}</span>
+    {% if not t.is_active %}<span class="chip warn">не активна</span>{% endif %}</h3>
+  <table class="grid">
+    <thead><tr><th>Код</th><th>ФИО</th><th>Роль</th><th>Первый вход</th>
+      <th>Последняя активность</th><th>Согласие</th><th></th></tr></thead>
+    <tbody>
+    {% for u in by_team.get(t.id, []) %}
+    <tr class="{{ '' if u.is_active else 'off' }}">
+      <td><code>{{ u.user_code }}</code></td>
+      <td>{{ u.full_name }}</td>
+      <td>{{ u.role_in_team }}</td>
+      <td>{{ u.first_login_at|dt or '—' }}</td>
+      <td>{{ u.last_seen_at|dt or '—' }}</td>
+      <td>{{ '✓' if u.consent_given_at else '—' }}</td>
+      <td class="actions">
+        <form method="post" action="/panel/users/{{ u.id }}/toggle">
+          <button class="link">{{ 'отключить' if u.is_active else 'включить' }}</button></form>
+        <form method="post" action="/panel/users/{{ u.id }}/reset-session">
+          <button class="link">сбросить сессию</button></form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="muted">Команд пока нет.</p>
+{% endfor %}
+{% endblock %}

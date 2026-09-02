@@ -1,0 +1,25 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Экспорт данных</h1>
+<p class="muted">Строка = одна сущность, все поля. CSV в UTF-8 с BOM — открывается
+   в Excel двойным кликом и читается <code>read.csv()</code> в R без предобработки.</p>
+
+<label class="row"><input type="checkbox" id="anon" checked> без ФИО
+  <span class="muted">(в выгрузке остаётся код участника вместо имени)</span></label>
+
+<ul class="downloads" id="dl">
+  {% for t in tables %}
+  <li><a href="/panel/export/{{ t }}.csv?anon=1" data-base="/panel/export/{{ t }}.csv">
+    {{ t }}.csv</a></li>
+  {% endfor %}
+  <li><a href="/panel/export/all.xlsx?anon=1" data-base="/panel/export/all.xlsx">
+    <b>po_agent_export.xlsx</b> — все таблицы листами</a></li>
+</ul>
+{% endblock %}
+{% block scripts %}
+<script>
+const anon = document.getElementById("anon");
+anon.onchange = () => document.querySelectorAll("#dl a").forEach(
+  a => a.href = a.dataset.base + "?anon=" + (anon.checked ? 1 : 0));
+</script>
+{% endblock %}

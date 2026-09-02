@@ -1,0 +1,19 @@
+{% for m in messages %}
+<div class="msg {{ m.author }}{{ ' mine' if m.author_user_id == me.id else '' }}">
+  <div class="who">
+    {% if m.author == 'agent' %}Product Owner
+    {% elif m.author == 'system' %}система
+    {% else %}{{ names.get(m.author_user_id, 'участник') }}{% endif %}
+    <span class="ts">{{ m.created_at|dt }}</span>
+    {% if m.initiator == 'agent_proactive' %}<span class="chip warn">сам вышел на связь</span>
+    {% elif m.initiator == 'agent_scheduled' %}<span class="chip">стендап</span>{% endif %}
+    {% if m.tool_calls %}<span class="chip tools" title="{{ m.tool_calls|map(attribute='name')|join(', ') }}">
+      инструментов: {{ m.tool_calls|length }}</span>{% endif %}
+  </div>
+  <div class="body">{{ m.content|md }}</div>
+</div>
+{% else %}
+<p class="empty">Диалога ещё нет. Расскажите агенту про идею проекта — он поможет
+собрать из неё требования и бэклог.</p>
+{% endfor %}
+{% if busy %}<div class="msg agent"><div class="body muted">агент думает…</div></div>{% endif %}

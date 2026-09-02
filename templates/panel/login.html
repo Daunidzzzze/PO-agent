@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block body_class %}centered{% endblock %}
+{% block content %}
+<form class="card auth" method="post" action="/panel/login">
+  <h1>Панель исследователя</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <label>Логин<input name="login" required autofocus></label>
+  <label>Пароль<input name="password" type="password" required></label>
+  <button type="submit">Войти</button>
+</form>
+{% endblock %}

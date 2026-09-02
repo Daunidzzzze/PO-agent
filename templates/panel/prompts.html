@@ -1,0 +1,30 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Системный промпт агента</h1>
+<table class="grid">
+  <thead><tr><th>Версия</th><th>Создан</th><th>Активна</th><th>Сообщений</th><th></th></tr></thead>
+  <tbody>
+  {% for v in versions %}
+  <tr>
+    <td>v{{ v.version }}</td><td>{{ v.created_at|dt }}</td>
+    <td>{{ '✓' if v.is_active else '' }}</td>
+    <td>{{ counts.get(v.id, 0) }}</td>
+    <td>
+      {% if v.id and not v.is_active %}
+      <form method="post" action="/panel/prompts/{{ v.id }}/activate">
+        <button class="link">активировать</button></form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<form method="post" action="/panel/prompts/save" class="card soft">
+  <h3>Новая версия</h3>
+  <textarea name="content" rows="26">{{ versions[0].content }}</textarea>
+  <label class="row"><input type="checkbox" name="activate" value="1" checked>
+    сделать активной сразу</label>
+  <button type="submit">Сохранить как новую версию</button>
+</form>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% macro rows(p) %}
+  {% set d = p.payload %}
+  {% if p.type in ('create_user_story', 'create_task') %}
+    {% set key = 'stories' if p.type == 'create_user_story' else 'tasks' %}
+    {% for s in d.get(key, []) %}
+    <label class="pick">
+      <input type="checkbox" class="pick-box" value="{{ loop.index0 }}" checked
+             {{ 'disabled' if p.status != 'pending' }}>
+      <span><b>{{ s.title }}</b> <span class="chip">{{ s.priority }}</span>
+        {% if s.user_story_text %}<br><i>{{ s.user_story_text }}</i>{% endif %}
+        {% if s.acceptance_criteria %}<br><small>AC: {{ s.acceptance_criteria|join(' · ') }}</small>{% endif %}
+      </span>
+    </label>
+    {% endfor %}
+  {% elif p.type == 'decompose_item' %}
+    <p class="muted">Разбить #{{ d.item_id }} «{{ d.parent_title }}» на:</p>
+    {% for s in d.get('subitems', []) %}
+    <label class="pick"><input type="checkbox" class="pick-box" value="{{ loop.index0 }}" checked
+        {{ 'disabled' if p.status != 'pending' }}><span>{{ s.title }}</span></label>
+    {% endfor %}
+  {% elif p.type == 'update_priority' %}
+    {% for c in d.get('changes', []) %}
+    <label class="pick"><input type="checkbox" class="pick-box" value="{{ loop.index0 }}" checked
+        {{ 'disabled' if p.status != 'pending' }}>
+      <span>#{{ c.item_id }} {{ c.title }}: <b>{{ c.from }} → {{ c.to }}</b></span></label>
+    {% endfor %}
+  {% elif p.type == 'create_acceptance_criteria' %}
+    <p class="muted">Для #{{ d.item_id }} «{{ d.item_title }}»:</p>
+    {% for c in d.get('criteria', []) %}
+    <label class="pick"><input type="checkbox" class="pick-box" value="{{ loop.index0 }}" checked
+        {{ 'disabled' if p.status != 'pending' }}><span>{{ c.content }}</span></label>
+    {% endfor %}
+  {% elif p.type == 'update_requirement' %}
+    <p><b>{{ d.action }}</b> ({{ d.type }}): {{ d.content }}</p>
+    {% if d.old_content %}<p class="muted">было: {{ d.old_content }}</p>{% endif %}
+  {% elif p.type == 'merge_duplicates' %}
+    <p class="muted">Оставить #{{ d.keep_item_id }} «{{ d.keep_title }}», объединить:</p>
+    {% for m in d.get('merge', []) %}
+    <label class="pick"><input type="checkbox" class="pick-box" value="{{ loop.index0 }}" checked
+        {{ 'disabled' if p.status != 'pending' }}><span>#{{ m.id }} {{ m.title }}</span></label>
+    {% endfor %}
+  {% elif p.type == 'create_risk' %}
+    <p><b>{{ d.title }}</b> <span class="chip warn">{{ d.severity }}</span>
+       <span class="chip">{{ d.category }}</span></p>
+    <p class="muted">{{ d.description }}</p>
+  {% elif p.type == 'assign_item' %}
+    {% for a in d.get('assignments', []) %}
+    <label class="pick"><input type="checkbox" class="pick-box" value="{{ loop.index0 }}" checked
+        {{ 'disabled' if p.status != 'pending' }}>
+      <span>#{{ a.item_id }} {{ a.item_title }} → {{ a.user_name }}</span></label>
+    {% endfor %}
+  {% elif p.type == 'update_product_vision' %}
+    <p>{{ d.content }}</p>
+  {% elif p.type == 'sprint_plan' %}
+    <p><b>Цель:</b> {{ d.goal }} ({{ d.starts_at }} — {{ d.ends_at }})</p>
+    {% for i in d.get('items', []) %}
+    <label class="pick"><input type="checkbox" class="pick-box" value="{{ loop.index0 }}" checked
+        {{ 'disabled' if p.status != 'pending' }}><span>#{{ i.id }} {{ i.title }}</span></label>
+    {% endfor %}
+  {% endif %}
+{% endmacro %}
+
+{% for p in proposals %}
+<div class="proposal s-{{ p.status }}" id="prop-{{ p.id }}">
+  <div class="p-head">
+    <b>{{ PROPOSAL_TITLES.get(p.type, p.type) }}</b>
+    <span class="chip">{{ p.created_at|dt }}</span>
+    {% if p.is_proactive %}<span class="chip warn">инициатива агента</span>{% endif %}
+    <span class="chip st">{{ {'pending':'ждёт решения','accepted':'принято',
+      'rejected':'отклонено','modified':'принято частично','expired':'просрочено'}[p.status] }}</span>
+  </div>
+
+  <div class="p-body">{{ rows(p) }}</div>
+  {% if p.rationale %}<p class="rationale"><b>Почему:</b> {{ p.rationale }}</p>{% endif %}
+
+  {% if p.status == 'pending' %}
+  <form class="p-actions" hx-post="/proposals/{{ p.id }}/resolve" hx-target="#tabbody"
+        onsubmit="this.selected.value =
+          [...this.closest('.proposal').querySelectorAll('.pick-box:checked')]
+            .map(x => x.value).join(',')">
+    <input type="hidden" name="selected" value="">
+    <input type="hidden" name="decision" value="accept" id="dec-{{ p.id }}">
+    <input name="comment" placeholder="Комментарий (сохраняется и для отклонения)">
+    <button type="submit" onclick="document.getElementById('dec-{{ p.id }}').value='accept'">
+      Принять</button>
+    <button type="submit" class="ghost"
+            onclick="document.getElementById('dec-{{ p.id }}').value='modify'">
+      Изменить и принять</button>
+    <button type="submit" class="danger"
+            onclick="document.getElementById('dec-{{ p.id }}').value='reject'">
+      Отклонить</button>
+  </form>
+  <p class="hint">«Изменить и принять» применит только отмеченные пункты.</p>
+  {% elif p.user_comment %}
+  <p class="muted">Комментарий {{ names.get(p.resolved_by_user_id, '') }}:
+     {{ p.user_comment }}</p>
+  {% endif %}
+</div>
+{% else %}
+<p class="empty">Предложений нет. Агент создаёт их, когда предлагает изменить бэклог,
+приоритеты, требования или назначения.</p>
+{% endfor %}

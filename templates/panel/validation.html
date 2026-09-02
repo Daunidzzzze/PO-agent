@@ -1,0 +1,51 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Валидация автоматической разметки</h1>
+<p class="muted">Случайная выборка сообщений с автоматическими метками. Исправьте там,
+где модель ошиблась, — система посчитает процент совпадения. Без этого цифру
+«запросы распределились так-то» в публикации нечем защищать.</p>
+
+<p>Проверено: <b>{{ stats.validated }}</b>, совпало <b>{{ stats.matched }}</b>,
+   точность <b class="{{ 'bad' if stats.validated and stats.accuracy < 80 }}">{{ stats.accuracy }}%</b>.
+   Осталось неразмеченных: {{ remaining }}.</p>
+
+{% if sample %}
+<form method="post" action="/panel/validation/save">
+  <table class="grid validation">
+    <thead><tr><th>Сообщение</th><th>Авто</th><th>Уверенность</th><th>Ваша метка</th></tr></thead>
+    <tbody>
+    {% for m in sample %}
+    <tr>
+      <td class="text">{{ m.content[:400] }}</td>
+      <td><code>{{ m.request_type }}</code></td>
+      <td>{{ '%.2f'|format(m.request_type_confidence or 0) }}</td>
+      <td>
+        <select name="m_{{ m.id }}">
+          {% for t in types %}
+          <option value="{{ t }}" {{ 'selected' if m.request_type == t }}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <button type="submit">Сохранить разметку</button>
+  <a class="btn ghost" href="/panel/validation?n=30">Другая выборка</a>
+</form>
+{% else %}
+<p class="muted">Неразмеченных сообщений с автоматическими метками нет.</p>
+{% endif %}
+
+{% if stats.confusion %}
+<h3>Матрица ошибок (строки — ручная метка, столбцы — авто)</h3>
+<table class="grid">
+  {% for manual, row in stats.confusion.items() %}
+  <tr><th>{{ manual }}</th>
+    <td>{% for auto, n in row.items() %}
+      <span class="chip {{ 'ok' if auto == manual else 'warn' }}">{{ auto }}: {{ n }}</span>
+    {% endfor %}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% if standup %}
+<div class="card soft">
+  <h3>Стендап {{ standup.scheduled_at|dt }}</h3>
+  {% if mine %}<p class="muted">Ваш отчёт принят. Можно поправить до закрытия сбора.</p>{% endif %}
+  <form hx-post="/standup/{{ standup.id }}/report" hx-target="#tabbody">
+    <label>Что сделал
+      <textarea name="done_yesterday" rows="2">{{ mine.done_yesterday if mine else '' }}</textarea></label>
+    <label>Что планирую
+      <textarea name="plan_today" rows="2">{{ mine.plan_today if mine else '' }}</textarea></label>
+    <label>Что блокирует
+      <textarea name="blockers" rows="2">{{ mine.blockers if mine else '' }}</textarea></label>
+    <button type="submit">{{ 'Обновить отчёт' if mine else 'Отправить' }}</button>
+  </form>
+</div>
+{% else %}
+<p class="empty">Сейчас сбор отчётов не идёт. Расписание настраивает исследователь.</p>
+{% endif %}
+
+<h3>Прошлые стендапы</h3>
+{% for s in history %}
+<div class="card soft">
+  <p class="muted">{{ s.scheduled_at|dt }} ·
+    {{ 'сводка' if s.status == 'summarized' else 'пропущен — отчётов не было' }}</p>
+  {% if s.agent_summary %}<div class="body">{{ s.agent_summary|md }}</div>{% endif %}
+</div>
+{% else %}
+<p class="muted">Истории пока нет.</p>
+{% endfor %}

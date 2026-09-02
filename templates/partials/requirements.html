@@ -1,0 +1,40 @@
+<h3>Product Vision</h3>
+{% if visions %}
+<div class="card soft">
+  <p>{{ visions[0].content }}</p>
+  <p class="muted">версия {{ visions[0].version }} · {{ visions[0].created_at|dt }}
+     · {{ 'предложил агент' if visions[0].created_by == 'agent' else 'команда' }}</p>
+</div>
+{% else %}<p class="empty">Не задан. Попросите агента предложить формулировку.</p>{% endif %}
+
+<h3>Требования</h3>
+<form class="inline-form" hx-post="/requirements/create" hx-swap="none"
+      hx-on::after-request="this.reset(); refreshState()">
+  <input name="content" placeholder="Формулировка требования" required>
+  <select name="type">
+    <option value="functional">функциональное</option>
+    <option value="non_functional">нефункциональное</option>
+    <option value="constraint">ограничение</option>
+  </select>
+  <button>Добавить</button>
+</form>
+
+{% for t, label in [('functional','Функциональные'), ('non_functional','Нефункциональные'),
+                    ('constraint','Ограничения')] %}
+{% set group = reqs|selectattr('type','equalto',t)|list %}
+{% if group %}
+<h4>{{ label }}</h4>
+<ul class="reqs">
+  {% for r in group %}
+  <li class="r-{{ r.status }}">
+    <span class="id">R{{ r.id }}</span> {{ r.content }}
+    <span class="chip">{{ r.status }}</span>
+    <span class="chip {{ 'agent' if r.source == 'agent' else '' }}">{{ r.source }}</span>
+    {% if r.superseded_by_id %}<span class="chip">заменено на R{{ r.superseded_by_id }}</span>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% else %}
+<p class="empty">Требований нет.</p>
+{% endfor %}

@@ -1,0 +1,29 @@
+{% for r in risks %}
+<div class="risk sev-{{ r.severity }} st-{{ r.status }}">
+  <div class="r-head">
+    <b>{{ r.title }}</b>
+    <span class="chip warn">{{ r.severity }}</span>
+    <span class="chip">{{ r.category }}</span>
+    <span class="chip">{{ r.status }}</span>
+    <span class="chip {{ 'agent' if r.detected_by == 'agent' else '' }}">
+      {{ 'нашёл агент' if r.detected_by == 'agent' else 'команда' }}</span>
+  </div>
+  {% if r.description %}<p class="muted">{{ r.description }}</p>{% endif %}
+  {% if r.team_response %}<p><b>Реакция команды:</b> {{ r.team_response }}</p>{% endif %}
+  {% if r.status == 'open' %}
+  <form class="inline-form" hx-post="/risks/{{ r.id }}/respond" hx-swap="none"
+        hx-on::after-request="refreshState()">
+    <input name="response" placeholder="Что делаем с этим риском">
+    <select name="status">
+      <option value="mitigated">снижен</option>
+      <option value="accepted">принимаем</option>
+      <option value="closed">закрыт</option>
+      <option value="open">оставить открытым</option>
+    </select>
+    <button>Сохранить</button>
+  </form>
+  {% endif %}
+</div>
+{% else %}
+<p class="empty">Открытых рисков нет. Агент проверяет проект раз в сутки.</p>
+{% endfor %}

@@ -1,0 +1,20 @@
+<ul class="feed">
+{% for e in events %}
+  <li>
+    <span class="ts">{{ e.created_at|dt }}</span>
+    <span class="what">{{ EVENT_TITLES.get(e.event_type, e.event_type) }}</span>
+    {% if e.entity_id %}<span class="id">#{{ e.entity_id }}</span>{% endif %}
+    {% if e.payload_after and e.payload_after.get('title') %}
+      — {{ e.payload_after.title }}
+    {% endif %}
+    <span class="chip {{ 'agent' if e.actor == 'agent' else '' }}">
+      {% if e.actor == 'agent' %}агент{% if e.actor_user_id %},
+        подтвердил {{ names.get(e.actor_user_id, '') }}{% endif %}
+      {% elif e.actor == 'system' %}система
+      {% else %}{{ names.get(e.actor_user_id, 'команда') }}{% endif %}
+    </span>
+  </li>
+{% else %}
+  <li class="muted">Событий пока нет.</li>
+{% endfor %}
+</ul>

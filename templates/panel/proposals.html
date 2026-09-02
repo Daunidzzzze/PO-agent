@@ -1,0 +1,58 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Предложения агента</h1>
+<p class="muted">Ключевая страница исследования: что агент предлагал и что команда с этим
+сделала. Отклонённые и изменённые предложения не удаляются никогда.</p>
+
+<form class="filters" method="get">
+  <select name="team"><option value="">все команды</option>
+    {% for t in teams %}<option value="{{ t.id }}" {{ 'selected' if f.team == t.id|string }}>{{ t.name }}</option>{% endfor %}</select>
+  <select name="ptype"><option value="">любой тип</option>
+    {% for k, v in PROPOSAL_TITLES.items() %}
+    <option value="{{ k }}" {{ 'selected' if f.ptype == k }}>{{ v }}</option>{% endfor %}</select>
+  <select name="status"><option value="">любой статус</option>
+    {% for s in ['pending','accepted','modified','rejected','expired'] %}
+    <option value="{{ s }}" {{ 'selected' if f.status == s }}>{{ s }}</option>{% endfor %}</select>
+  <button>Применить</button>
+</form>
+
+<h3>Сводка по типам</h3>
+<table class="grid">
+  <thead><tr><th>Тип</th><th>Всего</th><th>Принято</th><th>Изменено</th>
+    <th>Отклонено</th><th>Просрочено</th><th>Ждут</th><th>Доля принятия</th></tr></thead>
+  <tbody>
+  {% for ptype, d in stats.by_type.items() %}
+  <tr>
+    <td>{{ PROPOSAL_TITLES.get(ptype, ptype) }}</td>
+    <td>{{ d.total }}</td><td>{{ d.get('accepted', 0) }}</td>
+    <td>{{ d.get('modified', 0) }}</td><td>{{ d.get('rejected', 0) }}</td>
+    <td>{{ d.get('expired', 0) }}</td><td>{{ d.get('pending', 0) }}</td>
+    <td><b>{{ d.accept_rate }}%</b></td>
+  </tr>
+  {% else %}<tr><td colspan="8" class="muted">Данных нет.</td></tr>{% endfor %}
+  </tbody>
+</table>
+<p>Медианное время до решения:
+  <b>{{ stats.median_minutes_to_decision if stats.median_minutes_to_decision is not none else '—' }}</b>
+  мин (решено {{ stats.resolved_count }}).</p>
+
+<h3>Список</h3>
+<table class="grid">
+  <thead><tr><th>#</th><th>Тип</th><th>Статус</th><th>Создано</th><th>Решено</th>
+    <th>Кто решил</th><th>Инициатива</th><th>Комментарий</th></tr></thead>
+  <tbody>
+  {% for p in proposals %}
+  <tr class="s-{{ p.status }}">
+    <td>{{ p.id }}</td>
+    <td>{{ PROPOSAL_TITLES.get(p.type, p.type) }}</td>
+    <td>{{ p.status }}</td>
+    <td>{{ p.created_at|dt }}</td>
+    <td>{{ p.resolved_at|dt or '—' }}</td>
+    <td>{{ names.get(p.resolved_by_user_id, '—') }}</td>
+    <td>{{ 'агент' if p.is_proactive else 'диалог' }}</td>
+    <td>{{ p.user_comment or '' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

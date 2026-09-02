@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Панель исследователя</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/htmx.min.js" defer></script>
+</head>
+<body class="panel">
+<header class="topbar">
+  <div class="brand">Панель исследователя</div>
+  <nav class="pnav">
+    <a href="/panel/" class="{{ 'on' if active == 'dashboard.html' }}">Обзор</a>
+    <a href="/panel/teams" class="{{ 'on' if active == 'teams.html' }}">Команды</a>
+    <a href="/panel/projects" class="{{ 'on' if active == 'projects.html' }}">Проекты</a>
+    <a href="/panel/dialogs" class="{{ 'on' if active == 'dialogs.html' }}">Диалоги</a>
+    <a href="/panel/proposals" class="{{ 'on' if active == 'proposals.html' }}">Предложения</a>
+    <a href="/panel/analytics" class="{{ 'on' if active == 'analytics.html' }}">Аналитика</a>
+    <a href="/panel/validation" class="{{ 'on' if active == 'validation.html' }}">Валидация</a>
+    <a href="/panel/prompts" class="{{ 'on' if active == 'prompts.html' }}">Промпты</a>
+    <a href="/panel/proactive" class="{{ 'on' if active == 'proactive.html' }}">Проактивность</a>
+    <a href="/panel/export" class="{{ 'on' if active == 'export.html' }}">Экспорт</a>
+  </nav>
+  <div class="spacer"></div>
+  <form method="post" action="/panel/logout"><button class="link">выйти</button></form>
+</header>
+<main class="panel-body">{% block content %}{% endblock %}</main>
+{% block scripts %}{% endblock %}
+</body>
+</html>

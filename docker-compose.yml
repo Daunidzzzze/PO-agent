@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: po
+      POSTGRES_PASSWORD: po
+      POSTGRES_DB: po_agent
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U po"]
+      interval: 5s
+      retries: 10
+
+  web:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://po:po@db:5432/po_agent
+      RUN_SCHEDULER: "0"          # планировщик живёт в отдельном процессе
+    depends_on:
+      db: {condition: service_healthy}
+    restart: unless-stopped
+
+  scheduler:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://po:po@db:5432/po_agent
+      RUN_SCHEDULER: "1"
+    depends_on:
+      db: {condition: service_healthy}
+    # Планировщик идемпотентен (uq_standup_slot), перезапуск не создаёт дублей.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports: ["80:80"]
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [web]
+    restart: unless-stopped
+
+  backup:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes: ["./backups:/backups"]
+    depends_on:
+      db: {condition: service_healthy}
+    entrypoint: >
+      sh -c 'while true; do
+        PGPASSWORD=po pg_dump -h db -U po po_agent
+          > /backups/po_agent_$$(date +%Y%m%d).sql;
+        find /backups -name "*.sql" -mtime +14 -delete;
+        sleep 86400;
+      done'
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -1,0 +1,76 @@
+<div class="toolbar">
+  <select name="status" hx-get="/partials/backlog" hx-target="#tabbody"
+          hx-include="[name='assignee']">
+    <option value="">все статусы</option>
+    {% for s, ru in STATUS_RU.items() %}
+    <option value="{{ s }}" {{ 'selected' if status == s }}>{{ ru }}</option>
+    {% endfor %}
+  </select>
+  <select name="assignee" hx-get="/partials/backlog" hx-target="#tabbody"
+          hx-include="[name='status']">
+    <option value="">все исполнители</option>
+    {% for m in members %}
+    <option value="{{ m.id }}" {{ 'selected' if assignee == m.id|string }}>{{ m.full_name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn ghost" onclick="document.getElementById('newitem').toggleAttribute('hidden')">
+    + элемент</button>
+</div>
+
+<form id="newitem" hidden class="inline-form" hx-post="/backlog/create"
+      hx-swap="none" hx-on::after-request="this.reset(); refreshState()">
+  <input name="title" placeholder="Заголовок" required>
+  <textarea name="user_story_text" rows="2"
+            placeholder="Как <роль>, я хочу <цель>, чтобы <ценность>"></textarea>
+  <div class="row">
+    <select name="type">
+      <option value="user_story">User Story</option>
+      <option value="task">Задача</option>
+      <option value="spike">Spike</option>
+    </select>
+    <select name="priority">
+      <option value="must">must</option><option value="should" selected>should</option>
+      <option value="could">could</option><option value="wont">wont</option>
+    </select>
+    <button type="submit">Создать</button>
+  </div>
+</form>
+
+{% for prio, items in groups %}
+  {% if items %}
+  <h3 class="prio {{ prio }}">{{ prio|upper }} <span class="muted">{{ items|length }}</span></h3>
+  <div class="list" data-dnd="{{ prio }}">
+    {% for i in items %}
+    <div class="item st-{{ i.status }}" draggable="true" data-id="{{ i.id }}">
+      <div class="item-main" onclick="openItem({{ i.id }})">
+        <span class="id">#{{ i.id }}</span>
+        <span class="title">{{ i.title }}</span>
+        {% if i.parent_id %}<span class="chip">подзадача #{{ i.parent_id }}</span>{% endif %}
+        <span class="chip {{ 'ok' if acs.get(i.id) else 'warn' }}"
+              title="критериев приёмки">AC {{ acs.get(i.id, [])|length }}</span>
+        <span class="chip {{ 'agent' if i.created_by == 'agent' else '' }}">
+          {{ 'агент' if i.created_by == 'agent' else 'команда' }}</span>
+      </div>
+      <div class="item-side">
+        <select hx-post="/backlog/{{ i.id }}/update" hx-swap="none" name="status"
+                hx-on::after-request="refreshState()">
+          {% for s, ru in STATUS_RU.items() %}
+          <option value="{{ s }}" {{ 'selected' if i.status == s }}>{{ ru }}</option>
+          {% endfor %}
+        </select>
+        <select hx-post="/backlog/{{ i.id }}/update" hx-swap="none" name="assignee_id"
+                hx-on::after-request="refreshState()">
+          <option value="">— не назначен</option>
+          {% for m in members %}
+          <option value="{{ m.id }}" {{ 'selected' if i.assignee_id == m.id }}>{{ m.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% else %}
+<p class="empty">Бэклог пуст. Попросите агента в чате: «собери бэклог по нашей идее».</p>
+{% endfor %}
+<script>wireDragDrop();</script>

@@ -1,0 +1,58 @@
+{% extends "panel/base.html" %}
+{% block content %}
+<h1>Диалоги</h1>
+<form class="filters" method="get">
+  <select name="team"><option value="">все команды</option>
+    {% for t in teams %}<option value="{{ t.id }}" {{ 'selected' if f.team == t.id|string }}>{{ t.name }}</option>{% endfor %}</select>
+  <select name="user"><option value="">все участники</option>
+    {% for u in users %}<option value="{{ u.id }}" {{ 'selected' if f.user == u.id|string }}>{{ u.full_name }}</option>{% endfor %}</select>
+  <select name="rtype"><option value="">любой тип запроса</option>
+    {% for t in types %}<option value="{{ t }}" {{ 'selected' if f.rtype == t }}>{{ t }}</option>{% endfor %}</select>
+  <select name="stage"><option value="">любой этап</option>
+    {% for s in ['concept','requirements','development','testing','delivery'] %}
+    <option value="{{ s }}" {{ 'selected' if f.stage == s }}>{{ s }}</option>{% endfor %}</select>
+  <select name="initiator"><option value="">любой инициатор</option>
+    <option value="user" {{ 'selected' if f.initiator == 'user' }}>человек</option>
+    <option value="agent_scheduled" {{ 'selected' if f.initiator == 'agent_scheduled' }}>стендап</option>
+    <option value="agent_proactive" {{ 'selected' if f.initiator == 'agent_proactive' }}>проактивное</option>
+  </select>
+  <input type="date" name="date_from" value="{{ f.date_from }}">
+  <input type="date" name="date_to" value="{{ f.date_to }}">
+  <input name="q" value="{{ f.q }}" placeholder="полнотекстовый поиск">
+  <button>Применить</button>
+  <a class="btn ghost" href="/panel/dialogs">Сбросить</a>
+</form>
+
+<div class="transcript">
+{% for m in messages %}
+  {% if gaps[m.id] > 3600 %}
+  <div class="gap">пауза {{ (gaps[m.id] // 3600) }} ч</div>
+  {% endif %}
+  <div class="msg {{ m.author }}">
+    <div class="who">
+      {% if m.author == 'agent' %}Product Owner
+      {% elif m.author == 'system' %}система
+      {% else %}{{ names.get(m.author_user_id, '—') }}{% endif %}
+      <span class="ts">{{ m.created_at|dt }}</span>
+      {% if m.request_type %}<span class="chip">{{ m.request_type }}
+        {{ '%.2f'|format(m.request_type_confidence or 0) }}</span>{% endif %}
+      {% if m.request_type_manual %}<span class="chip ok">ручная: {{ m.request_type_manual }}</span>{% endif %}
+      {% if m.project_stage %}<span class="chip">{{ m.project_stage }}</span>{% endif %}
+      {% if m.initiator != 'user' %}<span class="chip warn">{{ m.initiator }}</span>{% endif %}
+      {% if m.latency_ms %}<span class="chip">{{ m.latency_ms }} мс</span>{% endif %}
+      {% if m.tokens_in %}<span class="chip">{{ m.tokens_in }}→{{ m.tokens_out }} ток.</span>{% endif %}
+    </div>
+    <div class="body">{{ m.content|md }}</div>
+    {% if m.tool_calls %}
+    <div class="tools">
+      {% for c in m.tool_calls %}
+      <code class="{{ 'ok' if c.ok else 'bad' }}">{{ c.name }}{{ '' if c.ok else ' ✗' }}</code>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+{% else %}
+<p class="muted">Ничего не найдено.</p>
+{% endfor %}
+</div>
+{% endblock %}
