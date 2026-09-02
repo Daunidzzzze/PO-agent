@@ -1,5 +1,6 @@
 .env
 .venv/
+.vercel/
 __pycache__/
 *.py[cod]
 *.db
